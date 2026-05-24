@@ -90,6 +90,18 @@ inready(void)
 	return 0;
 }
 
+int
+i8042data(void)
+{
+	int d;
+	
+	if(inready()){
+		return -1;
+	}
+	d = inb(Data);
+	return d;
+}
+
 /*
  *  ask 8042 to reset the machine
  */
