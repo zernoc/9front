@@ -455,15 +455,15 @@ applydelta(Object *dst, Object *base, char *d, int nd)
 			o = 0;
 			l = 0;
 			/* Offset in base */
-			if(d != ed && (c & 0x01)) o |= (*d++ & 0xff) <<  0;
-			if(d != ed && (c & 0x02)) o |= (*d++ & 0xff) <<  8;
-			if(d != ed && (c & 0x04)) o |= (*d++ & 0xff) << 16;
-			if(d != ed && (c & 0x08)) o |= (*d++ & 0xff) << 24;
+			if(d != ed && (c & 0x01)) o |= *(uchar*)d++ <<  0;
+			if(d != ed && (c & 0x02)) o |= *(uchar*)d++ <<  8;
+			if(d != ed && (c & 0x04)) o |= *(uchar*)d++ << 16;
+			if(d != ed && (c & 0x08)) o |= *(uchar*)d++ << 24;
 
 			/* Length to copy */
-			if(d != ed && (c & 0x10)) l |= (*d++ & 0xff) <<  0;
-			if(d != ed && (c & 0x20)) l |= (*d++ & 0xff) <<  8;
-			if(d != ed && (c & 0x40)) l |= (*d++ & 0xff) << 16;
+			if(d != ed && (c & 0x10)) l |= *(uchar*)d++ <<  0;
+			if(d != ed && (c & 0x20)) l |= *(uchar*)d++ <<  8;
+			if(d != ed && (c & 0x40)) l |= *(uchar*)d++ << 16;
 			if(l == 0) l = 0x10000;
 
 			if(o < 0 || l < 0 || l > er - r || o + l > base->size){
@@ -931,6 +931,22 @@ parsecommit(Object *o)
 	o->commit->nmsg = np;
 }
 
+static int
+validname(char *s)
+{
+	if(*s == 0)
+		return 0;
+	if(strcmp(s, ".") == 0 || strcmp(s, "..") == 0)
+		return 0;
+	for(; *s; s++){
+		if((*s&0xff) < 0x20 || *s == 0x7f || *s == '/'){
+			werrstr("invalid character in path element: %02x", *(uchar*)s);
+			return 0;
+		}
+	}
+	return 1;
+}
+
 static void
 parsetree(Object *o)
 {
@@ -978,6 +994,8 @@ parsetree(Object *o)
 		}
 		if(m & 0040000) /* dir */
 			t->mode |= DMDIR;
+		if(!validname(p))
+			sysfatal("invalid entry: %r");
 		t->name = p;
 		p = memchr(p, 0, ep - p);
 		if(p == nil || *p++ != 0 ||  ep - p < sizeof(t->h.h))
@@ -1625,7 +1643,8 @@ static int
 encodedelta(Meta *m, Object *o, Object *b, void **pp)
 {
 	char *p, *bp, buf[16];
-	int len, sz, n, i, j;
+	int len, sz, i, j;
+	vlong n;
 	Delta *d;
 
 	sz = 128;
@@ -1655,6 +1674,7 @@ encodedelta(Meta *m, Object *o, Object *b, void **pp)
 		d = &m->delta[j];
 		if(d->cpy){
 			n = d->off;
+			assert(n < (1ULL<<32));
 			bp = buf + 1;
 			buf[0] = 0x81;
 			buf[1] = 0x00;
@@ -1667,6 +1687,7 @@ encodedelta(Meta *m, Object *o, Object *b, void **pp)
 			}
 
 			n = d->len;
+			assert(n < (1ULL<<24));
 			if(n != 0x10000) {
 				buf[0] |= 0x1<<4;
 				for(i = 0; i < sizeof(buf)-4 && n > 0; i++){

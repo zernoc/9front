@@ -535,17 +535,17 @@ rudpiput(Proto *rudp, Ipifc *ifc, Block *bp)
 
 	if(reliput(c, bp, raddr, rport) < 0){
 		qunlock(ucb);
-		freeb(bp);
+		freeblist(bp);
 		return;
 	}
 
 	/*
 	 * Trim the packet down to data size
 	 */
-
 	len -= (UDP_RHDRSIZE-UDP_PHDRSIZE);
 	bp = trimblock(bp, UDP_IPHDR+UDP_RHDRSIZE, len);
 	if(bp == nil) {
+		qunlock(ucb);
 		netlog(f, Logrudp, "rudp: len err %I.%d -> %I.%d\n", 
 			raddr, rport, laddr, lport);
 		DPRINT("rudp: len err %I.%d -> %I.%d\n", 

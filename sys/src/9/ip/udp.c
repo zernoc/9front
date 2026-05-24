@@ -328,7 +328,6 @@ udpkick(void *x, Block *bp)
 void
 udpiput(Proto *udp, Ipifc *ifc, Block *bp)
 {
-	int len;
 	Udp4hdr *uh4;
 	Udp6hdr *uh6;
 	Iphash *iph;
@@ -338,9 +337,8 @@ udpiput(Proto *udp, Ipifc *ifc, Block *bp)
 	ushort rport, lport;
 	Udppriv *upriv;
 	Fs *f;
-	int version;
-	int ottl, oviclfl, olen;
 	uchar *p;
+	int version, ottl, oviclfl, olen, len;
 
 	upriv = udp->priv;
 	f = udp->f;
